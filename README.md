@@ -1,6 +1,6 @@
 # omnilab/ncbi
 
-NCBI Gene and NCBI Taxonomy for [glitchr/omnilab](https://github.com/glitchr-studio/omnilab): a
+NCBI Gene and NCBI Taxonomy for [omniscient/omnilab](https://github.com/glitchr-studio/omnilab): a
 gene by its GeneID - its symbol, name, type, organism, chromosome, cytogenetic and genomic
 locations, summary, and its UniProt and Ensembl ids for the Collector to follow - and a taxon by
 its id or a name - its scientific name, rank, common name, basionym, lineage by rank, and its GBIF
