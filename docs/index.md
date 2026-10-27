@@ -1,5 +1,11 @@
 # omnilab/ncbi
 
+NCBI Gene and NCBI Taxonomy, through NCBI Datasets v2 (`https://api.ncbi.nlm.nih.gov/datasets/v2/`)
+and E-utilities (`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/`), for
+[omnisense/omnilab](https://github.com/glitchr-omnisense/omnilab): genes by GeneID, taxa by id or
+name - location, summary, lineage - with their UniProt, Ensembl and GBIF ids as cross-references,
+as entities; a search in Entrez's syntax. No key needed.
+
 ## Installation
 
 ```sh
@@ -16,6 +22,51 @@ $ncbi = (new NcbiSourceFactory($httpClient))->create([
 ```
 
 With the Symfony bundle, the factory is registered as `ncbi` (see the core's docs).
+
+## Credentials
+
+None needed: E-utilities answer three calls a second without a key, Datasets five. An NCBI API
+key (an NCBI account's settings, ncbi.nlm.nih.gov) raises both to ten: give it as `api_key` (sent
+as `api_key` to E-utilities and `api-key` to Datasets). NCBI asks every E-utilities client for the
+tool's name and an email: `tool` and `mailto` are sent.
+
+## Options
+
+The factory's options, with the defaults it applies (`NcbiSourceFactory`):
+
+| Option | Type | Default | Required | Effect |
+|---|---|---|---|---|
+| `api_key` | `?string` | null | no | an NCBI API key: ten calls a second instead of three (five for Datasets) |
+| `tool` | `string` | `omnilab` | no | E-utilities' `tool`: the name NCBI knows the application by |
+| `links` | `bool` | `true` | no | `entity()` reads a taxon's external links (one call more): its GBIF key |
+| `synonyms` | `int` | `20` | no | how many of a gene's other names to keep; 0: none |
+| `eutils_uri` | `string` | `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/` | no | E-utilities, for the search (`esearch.fcgi`) |
+| `mailto` | `?string` | null | no | a contact address: E-utilities' `email`, and in the User-Agent |
+| `user_agent` | `?string` | null | no | the whole User-Agent, in place of the one made from `mailto` |
+| `throttle` | `float\|string` | `auto` | no | seconds left between two calls; `auto`: 0.34 without a key, 0.1 with one |
+| `base_uri` | `string` | `https://api.ncbi.nlm.nih.gov/datasets/v2/` | no | NCBI Datasets v2 |
+
+## Capabilities
+
+`capabilities()` answers `entity`, `search`, `cross_references`; an operation it does not answer throws `NotSupportedException` before any call.
+
+| Capability | Supported | |
+|---|---|---|
+| `entity` | yes | a GeneID (a bare number, `gene:`, `ncbigene:`, its page), a taxon id (`txid9689`, `taxonomy:`, an `Identifier`) or a taxon's scientific or common name; another scheme refused before any call |
+| `search` | yes | Entrez's text search in NCBI Gene, or NCBI Taxonomy for `Domain::TAXONOMY`, its syntax and order, 100 a page at most, with a `total`; then one Datasets call for the page; another domain answers an empty page |
+| `series` | no |  |
+| `products` | no |  |
+| `occurrences` | no |  |
+| `datasets` | no |  |
+| `jobs` | no |  |
+| `open` | no |  |
+| `structure` | no |  |
+| `cross_references` | yes | a gene's UniProt (Swiss-Prot) accessions and Ensembl ids; a taxon's GBIF key (`links`) |
+| `forecast` | no |  |
+| `historical` | no |  |
+| `area` | no |  |
+| `station` | no |  |
+| `cloud_cover` | no |  |
 
 ## Which API
 
@@ -92,8 +143,8 @@ it). A search result holds the same, without the links.
 
 No Wikidata item nor iNaturalist taxon: Datasets' links name GBIF, the Encyclopedia of Life and
 Wikipedia only (Wikidata finds the taxon by its NCBI id, P685). Not read: a gene's GO annotations,
-transcripts and proteins, orthologs, expression, references and the identifiers of schemes the core
-does not know (HGNC, OMIM, RefSeq); a taxon's children, its genome and gene counts, its genetic
+transcripts and proteins, orthologs, expression, references, and its HGNC and OMIM ids (schemes
+the core has, which this source does not read: omnilab/hgnc gives them) and RefSeq's; a taxon's children, its genome and gene counts, its genetic
 codes, its full lineage with the intermediate ranks (only their ids come, in `parents`). Not used:
 `efetch`, `elink`, `esummary`, PubMed and the sequence databases.
 
@@ -102,6 +153,59 @@ codes, its full lineage with the intermediate ranks (only their ids come, in `pa
 Hemoglobin beta from UniProt reaches NCBI Gene by its GeneID (3043); *Panthera leo* from GBIF
 reaches NCBI Taxonomy by the NCBI id GBIF keeps in its ENA checklist (9689). Both answered on
 2026-10-15: see the core's `docs/merging.md`.
+
+## Example
+
+```php
+<?php
+
+require __DIR__.'/vendor/autoload.php';
+
+use Omnilab\Model\Domain;
+use Omnilab\Model\Identifier;
+use Omnilab\Model\Scheme;
+use Omnilab\Ncbi\NcbiSourceFactory;
+use Omnilab\Source\Query;
+use Symfony\Component\HttpClient\HttpClient;
+
+$ncbi = (new NcbiSourceFactory(HttpClient::create()))->create([
+    'mailto' => 'you@example.org',                 // E-utilities' "email"
+    'api_key' => getenv('NCBI_API_KEY') ?: null,   // optional: ten calls a second instead of three
+]);
+
+$hbb = $ncbi->entity('3043');   // a bare number is a GeneID
+echo $hbb->label, ' (', $hbb->id, '): ', $hbb->value('gene_name'), ', ', $hbb->value('map_location'), ', UniProt ', $hbb->identifier(Scheme::UNIPROT), ', Ensembl ', $hbb->identifier(Scheme::ENSEMBL), "\n";
+
+$lion = $ncbi->entity(Identifier::of(Scheme::NCBI_TAXON, '9689'));
+echo $lion->label, ' (', $lion->id, '): ', $lion->value('taxon_rank'), ', ', $lion->value('common_name'), ', GBIF ', $lion->identifier(Scheme::GBIF), ', basionym ', $lion->value('basionym'), "\n";
+
+$page = $ncbi->search(new Query('Panthera[subtree]', Domain::TAXONOMY, limit: 3));
+printf("%d taxa in Panthera[subtree]; the first %d: %s\n", $page->total, count($page), implode(', ', array_map(static fn ($t) => $t->label, $page->items)));
+```
+
+```
+HBB (ncbi.gene:3043): hemoglobin subunit beta, 11p15.4, UniProt P68871, Ensembl ENSG00000244734
+Panthera leo (ncbi.taxon:9689): species, lion, GBIF 5219404, basionym Felis leo Linnaeus, 1758
+33 taxa in Panthera[subtree]; the first 3: Panthera pardus nimr, Panthera leo melanochaita, Panthera pardus adersi
+```
+
+(as answered on 2026-10-27, without a key: five calls, 0.34 s apart; the GBIF key NCBI links is
+the legacy Backbone number)
+
+```yaml
+# config/packages/omnilab.yaml
+omnilab:
+    sources:
+        ncbi: { factory: ncbi, options: { mailto: '%env(OMNILAB_MAILTO)%', api_key: '%env(default::NCBI_API_KEY)%' } }
+```
+
+## Errors
+
+Every call goes through `HttpSource`: a 404 or a 410 (and a 204) is null - an empty page for a list -; a 429 is a `RateLimitedException` (`retryAfter` from `Retry-After`); a 5xx, a time-out or a host that does not answer an `UnavailableException`; any other 4xx a `ProviderException` with its `status` and what the service said; an answer that is not JSON a `ProviderException`, a web page answered for JSON an `UnavailableException`.
+
+NCBI's own: an unknown GeneID is Datasets' `{}`, an unknown taxon an `errors` report: null.
+E-utilities' `ERROR` (a search it cannot run) is a `ProviderException` with it. Before any call: an
+identifier of another scheme (UniProt, Ensembl, GBIF...) (`NotSupportedException`).
 
 ## Verified, and not
 
@@ -115,7 +219,20 @@ second page from 3) and of NCBI Taxonomy for `Panthera[subtree]` (33 taxa); the 
 of each service (3 for E-utilities, 5 for Datasets). The fixtures in `Tests/Fixtures/` are their
 answers, the search page's GO annotations cut.
 
+Again on 2026-10-27, without a key: HBB by its GeneID, the lion by its taxon id, the search of
+NCBI Taxonomy for `Panthera[subtree]` (33 taxa; the example above).
+
 Not verified: an API key (none at hand: the `api_key` parameter and the `api-key` header are sent
 as NCBI documents them, checked against recorded calls only); NCBI's answer past the rate (no 429
 met: the source keeps under it); Datasets' `links` for an unknown taxon answer 500 - never asked,
 the links being read only for a taxon found.
+
+## Responsibility
+
+This package is an independent, unofficial client: it is not affiliated with, endorsed by or
+sponsored by the NCBI or the U.S. National Library of Medicine. NCBI asks for `tool` and `email`
+and for its rates, places no restriction on the use of its data though submitters may hold rights
+on theirs, as the README's [Terms of use](https://github.com/glitchr-omnisense/omnilab-ncbi#terms-of-use)
+and [NCBI's policies](https://www.ncbi.nlm.nih.gov/home/about/policies/) say. Whoever runs the
+package is responsible for complying with them and for any use made of what it returns: see the
+README's [Responsibility](https://github.com/glitchr-omnisense/omnilab-ncbi#responsibility) section.
