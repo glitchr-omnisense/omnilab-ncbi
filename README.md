@@ -48,6 +48,18 @@ theirs: see [NCBI's policies](https://www.ncbi.nlm.nih.gov/home/about/policies/)
 
 See [docs/](docs/index.md) for what is read, how it maps, and what NCBI does not give here.
 
+## Usage policy
+
+Declared as data in [`policy.json`](policy.json) (read at https://ncbiinsights.ncbi.nlm.nih.gov/2017/11/02/new-api-keys-for-the-e-utilities/ on 2026-11-10), and honoured on every request by the
+core: a limit reached waits when its window ends within `max_wait` seconds, else the request is not
+sent ([Usage policies](https://github.com/glitchr-omnisense/omnilab/blob/1.x/docs/policies.md)).
+
+- Limits: 3 a second for eutils per client-ip; 5 a second for datasets.
+- Licence: not stated; commercial use: allowed.
+- Credit: required: NCBI Disclaimer and Copyright notice (https://www.ncbi.nlm.nih.gov/home/about/policies/).
+- Needs: a User-Agent.
+- E-utilities (`eutils`) and Datasets (`datasets`) are counted apart; with an `api_key`: 10 a second on each, per key (`NcbiSource::usagePolicy()`).
+
 ## Responsibility
 
 This package is an independent, unofficial client: it is not affiliated with, endorsed by or

@@ -14,6 +14,7 @@ use Omnilab\Source\Capability;
 use Omnilab\Source\HttpSource;
 use Omnilab\Source\Page;
 use Omnilab\Source\Query;
+use Omnisense\Contracts\Policy\UsagePolicy;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
@@ -59,6 +60,32 @@ final class NcbiSource extends HttpSource
         ?float $throttle = null,
     ) {
         parent::__construct($http, $baseUri, $headers + array_filter(['api-key' => $apiKey]), $throttle ?? (null === $apiKey ? 0.34 : 0.1));
+    }
+
+    /**
+     * NCBI's figures without a key (policy.json: E-utilities 3 a second per
+     * address, Datasets 5); with an api_key, 10 a second on each, counted per
+     * key - as NCBI's API-key pages said on 2026-11-10.
+     */
+    public function usagePolicy(): UsagePolicy
+    {
+        $declared = parent::usagePolicy();
+        if (null === $this->apiKey || '' === $this->apiKey) {
+            return $declared;
+        }
+
+        return UsagePolicy::fromArray(array_replace($declared->toArray(), [
+            'rateLimits' => [
+                ['max' => 10, 'window' => 'second', 'scope' => 'key', 'operations' => ['eutils'], 'note' => 'E-utilities with an api_key.'],
+                ['max' => 10, 'window' => 'second', 'scope' => 'key', 'operations' => ['datasets'], 'note' => 'Datasets with an api-key header.'],
+            ],
+        ]));
+    }
+
+    /** "eutils" for E-utilities (esearch...), "datasets" for NCBI Datasets: NCBI counts them apart. */
+    protected function operation(string $method, string $url): string
+    {
+        return str_starts_with($url, $this->eutilsUri) || str_contains($url, '/entrez/eutils/') ? 'eutils' : 'datasets';
     }
 
     public function getName(): string

@@ -1,0 +1,61 @@
+{
+    "$schema": "https://github.com/glitchr-omnisense/contracts/blob/1.x/resources/usage-policy.schema.json",
+    "provider": "ncbi",
+    "rateLimits": [
+        {
+            "max": 3,
+            "window": "second",
+            "every": 1,
+            "scope": "client-ip",
+            "operations": [
+                "eutils"
+            ],
+            "note": "Without an API key, per IP address; with an api_key: 10 requests a second for all activity from that key (scope key)."
+        },
+        {
+            "max": 5,
+            "window": "second",
+            "every": 1,
+            "scope": "application",
+            "operations": [
+                "datasets"
+            ],
+            "note": "Without an API key; with an api-key header: 10 requests a second."
+        }
+    ],
+    "concurrency": null,
+    "rights": {
+        "commercial": "allowed",
+        "openSourceRequired": null,
+        "caching": {
+            "permission": "allowed",
+            "maxTtl": null
+        },
+        "storage": "allowed",
+        "redistribution": "allowed",
+        "attribution": {
+            "required": true,
+            "text": "NCBI Disclaimer and Copyright notice",
+            "url": "https://www.ncbi.nlm.nih.gov/home/about/policies/",
+            "where": [
+                "credits"
+            ]
+        },
+        "licence": null
+    },
+    "requirements": {
+        "key": false,
+        "userAgent": {
+            "required": true,
+            "pattern": null
+        }
+    },
+    "provenance": {
+        "terms": "https://www.ncbi.nlm.nih.gov/home/about/policies/",
+        "policy": "https://ncbiinsights.ncbi.nlm.nih.gov/2017/11/02/new-api-keys-for-the-e-utilities/",
+        "verifiedAt": "2026-11-10",
+        "declaredBy": "maintainer",
+        "contact": "eutilities@ncbi.nlm.nih.gov",
+        "notes": "Operations: eutils = https://eutils.ncbi.nlm.nih.gov/entrez/eutils/, datasets = https://api.ncbi.nlm.nih.gov/datasets/v2/. Read 2026-11-10: NCBI Insights (E-utilities: 3 requests/s per IP without a key, 10/s per key with one; limits count request starts, concurrent requests allowed; more on request to eutilities@ncbi.nlm.nih.gov), NCBI Datasets API-keys page (5 rps by default, 10 rps with a key), NCBI policies (no restriction on use or distribution of the molecular data, though submitters may claim patent, copyright or other rights; a service built on E-utilities must make the NCBI Disclaimer and Copyright notice evident to its users). Live headers: X-RateLimit-Limit 3 on eutils, 5 on datasets (keyless). The E-utilities book (www.ncbi.nlm.nih.gov/books/NBK25497) sits behind a reCAPTCHA check and could not be read: its tool and email parameters (identify the application, registered with NCBI; a blocked IP is restored once they are registered) come from search excerpts of it; userAgent.required stands for those parameters, not a User-Agent header. No data licence is named (NCBI data is US government work, rights of submitters aside)."
+    }
+}
