@@ -36,6 +36,34 @@ With UniProt and Wikidata configured too, the `Collector` follows a protein to i
 NCBI's gene gives the UniProt accession back; with GBIF, a species reaches NCBI Taxonomy by the
 NCBI id GBIF keeps for it.
 
+## Install and a first call
+
+```sh
+composer require omnilab/ncbi
+```
+
+A real call, with no account and no key: the human HBB gene in NCBI Gene. `mailto` is your address,
+sent in the User-Agent so that the service can reach you before it blocks a caller; the source keeps
+to the limits its [`policy.json`](policy.json) declares.
+
+```php
+<?php
+
+require __DIR__.'/vendor/autoload.php';
+
+use Omnilab\Ncbi\NcbiSourceFactory;
+
+$ncbi = (new NcbiSourceFactory())->create(['mailto' => 'you@example.org']);   // your address, in the User-Agent
+$hbb = $ncbi->entity('3043');
+echo $hbb->label, ', ', $hbb->value('gene_name'), ', ', $hbb->value('map_location'), "\n";
+```
+
+Its output on 2026-11-13:
+
+```
+HBB, hemoglobin subunit beta, 11p15.4
+```
+
 ## Terms of use
 
 NCBI asks every client of E-utilities to send `tool` and `email` (the source sends `omnilab` and
